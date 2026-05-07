@@ -27,7 +27,7 @@ import axios from "axios";
 import { getMe } from "../api";
 import NotificationBell from "../components/NotificationBell";
 
-const BACKEND_URL = "https://autodocgen2-production-8e78.up.railway.app";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 // ── Integration config — add more tools here later ───────────────────────────
 const INTEGRATIONS = [

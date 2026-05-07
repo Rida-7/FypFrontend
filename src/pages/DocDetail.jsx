@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { ArrowLeft, FileText, RefreshCw } from "lucide-react";
 
-const BACKEND_URL = "https://autodocgen2-production-8e78.up.railway.app";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function DocumentDetail() {
   const { template_name }      = useParams();

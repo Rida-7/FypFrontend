@@ -4,7 +4,7 @@ import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import { ArrowLeft, FileText, RefreshCw, Send, CheckCircle2 } from "lucide-react";
 
-const BACKEND_URL = "https://autodocgen2-production-8e78.up.railway.app";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 // ── Input parser (Doc 7) ──────────────────────────────────────────────────────
 const parseInput = (input) => {

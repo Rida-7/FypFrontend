@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { FileText, CheckSquare, Zap, ArrowRight } from "lucide-react";
 
-const BACKEND_URL = "https://autodocgen2-production-8e78.up.railway.app";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function HeadingsPage() {
   const [headings, setHeadings] = useState([]);

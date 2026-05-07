@@ -1,6 +1,6 @@
 import React from "react";
 
-const BACKEND_URL = "https://autodocgen2-production-8e78.up.railway.app";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function Home() {
   const connectTrello = () => {

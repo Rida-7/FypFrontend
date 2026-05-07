@@ -15,7 +15,7 @@ import {
   SiLinear,
 } from "react-icons/si";
 
-const BACKEND_URL = "https://autodocgen2-production-8e78.up.railway.app";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 // ── Tool metadata ─────────────────────────────────────────────────────────────
 const TOOL_CONFIG = {

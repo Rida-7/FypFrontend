@@ -4,7 +4,7 @@ import { FaTrello, FaClipboardList } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Grid3X3 } from "lucide-react";
 
-const BACKEND_URL = "https://autodocgen2-production-8e78.up.railway.app";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function Boards() {
   const navigate = useNavigate();

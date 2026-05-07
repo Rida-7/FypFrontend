@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL || 'https://autodocgen2-production-8e78.up.railway.app',
+  baseURL: import.meta.env.VITE_BACKEND_URL,
   withCredentials: true
 })
 

@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { signIn } from "../api"; // <- your new axios api
 import { useNavigate } from "react-router-dom";
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -90,13 +92,13 @@ export default function SignIn() {
 
         <div className="flex gap-3 pt-3">
           <a
-            href={`${import.meta.env.VITE_BACKEND_URL || "https://autodocgen2-production-8e78.up.railway.app"}/auth/google`}
+            href={`${BACKEND_URL}/auth/google`}
             className="flex-1 p-3 rounded-lg bg-white/10 border border-gray-600 flex items-center justify-center gap-2 hover:bg-white/20 transition"
           >
             <FcGoogle size={20} /> <span>Google</span>
           </a>
           <a
-            href={`${import.meta.env.VITE_BACKEND_URL || "https://autodocgen2-production-8e78.up.railway.app"}/auth/github`}
+            href={`${BACKEND_URL}/auth/github`}
             className="flex-1 p-3 rounded-lg bg-white/10 border border-gray-600 flex items-center justify-center gap-2 hover:bg-white/20 transition"
           >
             <Github size={18} /> <span>GitHub</span>

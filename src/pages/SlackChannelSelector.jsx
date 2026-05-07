@@ -3,7 +3,7 @@ import axios from "axios";
 import { FaSlack, FaCheckCircle } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
-const BACKEND_URL = "https://autodocgen2-production-8e78.up.railway.app";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function SlackChannelSelector() {
   const navigate = useNavigate();
@@ -164,8 +164,7 @@ export default function SlackChannelSelector() {
         <button
           onClick={() =>
             (window.location.href =
-              "https://autodocgen2-production-8e78.up.railway.app/slack/connect?user_id=" +
-              userId)
+              `${BACKEND_URL}/slack/connect?user_id=${userId}`)
           }
         >
           Connect Slack
