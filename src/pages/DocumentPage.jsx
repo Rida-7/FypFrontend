@@ -19,13 +19,13 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 // ── Tool metadata ─────────────────────────────────────────────────────────────
 const TOOL_CONFIG = {
-  trello:  { label: "Trello",  color: "#0079BF", bg: "#e8f4fd", Icon: SiTrello },
-  slack:   { label: "Slack",   color: "#E01E5A", bg: "#fde8ef", Icon: SiSlack },
-  github:  { label: "GitHub",  color: "#24292e", bg: "#f0ebfd", Icon: SiGithub },
-  notion:  { label: "Notion",  color: "#374151", bg: "#f3f4f6", Icon: SiNotion },
-  jira:    { label: "Jira",    color: "#0052CC", bg: "#e6effe", Icon: SiJira },
-  asana:   { label: "Asana",   color: "#F06A6A", bg: "#fef0f0", Icon: SiAsana },
-  linear:  { label: "Linear",  color: "#5E6AD2", bg: "#eeeffe", Icon: SiLinear },
+  trello: { label: "Trello", color: "#0079BF", bg: "#e8f4fd", Icon: SiTrello },
+  slack: { label: "Slack", color: "#E01E5A", bg: "#fde8ef", Icon: SiSlack },
+  github: { label: "GitHub", color: "#24292e", bg: "#f0ebfd", Icon: SiGithub },
+  notion: { label: "Notion", color: "#374151", bg: "#f3f4f6", Icon: SiNotion },
+  jira: { label: "Jira", color: "#0052CC", bg: "#e6effe", Icon: SiJira },
+  asana: { label: "Asana", color: "#F06A6A", bg: "#fef0f0", Icon: SiAsana },
+  linear: { label: "Linear", color: "#5E6AD2", bg: "#eeeffe", Icon: SiLinear },
   clickup: { label: "ClickUp", color: "#7B68EE", bg: "#f0eeff", Icon: SiClickup },
 };
 
@@ -99,11 +99,11 @@ function FullDocModal({ content, onClose }) {
 // 🔁 Version History Modal
 // =====================================================
 function VersionHistory({ selectedDoc, userId, onClose }) {
-  const [versions, setVersions]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
-  const [fullView, setFullView]   = useState(null);
-  const [expanded, setExpanded]   = useState(null);
+  const [versions, setVersions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [fullView, setFullView] = useState(null);
+  const [expanded, setExpanded] = useState(null);
   const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
@@ -113,7 +113,7 @@ function VersionHistory({ selectedDoc, userId, onClose }) {
         setLoading(true);
         const res = await fetch(
           `${BACKEND_URL}/generated-docs/versions?` +
-            `user_id=${userId}&project_id=${selectedDoc.project_id}&template_name=${selectedDoc.template_name}`
+          `user_id=${userId}&project_id=${selectedDoc.project_id}&template_name=${selectedDoc.template_name}`
         );
         if (!res.ok) throw new Error("Failed to fetch versions");
         const data = await res.json();
@@ -220,9 +220,8 @@ function VersionHistory({ selectedDoc, userId, onClose }) {
                         onClick={() => setExpanded(expanded === i ? null : i)}
                       >
                         <ChevronDown
-                          className={`w-3.5 h-3.5 transition-transform ${
-                            expanded === i ? "rotate-180" : ""
-                          }`}
+                          className={`w-3.5 h-3.5 transition-transform ${expanded === i ? "rotate-180" : ""
+                            }`}
                         />
                         {expanded === i ? "Collapse" : "Expand"}
                       </button>
@@ -257,11 +256,11 @@ function VersionHistory({ selectedDoc, userId, onClose }) {
 // 📄 MAIN PAGE
 // =====================================================
 export default function DocumentsPage() {
-  const [docs, setDocs]               = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState(null);
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedDoc, setSelectedDoc] = useState(null);
-  const [hoveredDoc, setHoveredDoc]   = useState(null);
+  const [hoveredDoc, setHoveredDoc] = useState(null);
   const [collapsedTools, setCollapsedTools] = useState({});
 
   const getUserId = () => {
@@ -344,7 +343,7 @@ export default function DocumentsPage() {
 
   // ── 2. Group: tool → project → docs[] ────────────────────────────────────
   const groupedByTool = Object.values(latestMap).reduce((acc, doc) => {
-    const tool    = resolveToolName(doc);
+    const tool = resolveToolName(doc);
     const project = resolveProjectName(doc);
     if (!acc[tool]) acc[tool] = {};
     if (!acc[tool][project]) acc[tool][project] = [];
@@ -353,7 +352,7 @@ export default function DocumentsPage() {
   }, {});
 
   const cardGradient = "from-indigo-500 to-purple-600";
-  const cardGlow     = "rgba(99,102,241,0.13)";
+  const cardGlow = "rgba(99,102,241,0.13)";
 
   const toggleTool = (tool) =>
     setCollapsedTools((prev) => ({ ...prev, [tool]: !prev[tool] }));
@@ -394,9 +393,9 @@ export default function DocumentsPage() {
 
         {/* ── Tool Sections ── */}
         {Object.entries(groupedByTool).map(([toolName, projects]) => {
-          const toolCfg     = getToolConfig(toolName);
+          const toolCfg = getToolConfig(toolName);
           const isCollapsed = collapsedTools[toolName];
-          const totalDocs   = Object.values(projects).reduce(
+          const totalDocs = Object.values(projects).reduce(
             (s, arr) => s + arr.length,
             0
           );
@@ -428,9 +427,8 @@ export default function DocumentsPage() {
                   {totalDocs} doc{totalDocs !== 1 ? "s" : ""}
                 </span>
                 <ChevronDown
-                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${
-                    isCollapsed ? "-rotate-90" : ""
-                  }`}
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${isCollapsed ? "-rotate-90" : ""
+                    }`}
                 />
               </button>
 
@@ -508,17 +506,21 @@ export default function DocumentsPage() {
                                 </div>
                               </div>
 
-                              {/* ✅ Current version badge */}
-                              <span className="self-start text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold mb-3">
-                                v{doc.version ?? "—"} · current
+                              {/* ✅ Version badge — show "current" only if it's the latest */}
+                              <span
+                                className={`self-start text-xs px-2 py-0.5 rounded-full font-semibold mb-3 border ${doc.is_latest
+                                    ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                    : "bg-gray-50 text-gray-500 border-gray-200"
+                                  }`}
+                              >
+                                v{doc.version ?? "—"}{doc.is_latest ? " · current" : ""}
                               </span>
-
                               {/* Preview */}
                               <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 flex-1 mb-4">
                                 {doc.generated_docs
                                   ? doc.generated_docs
-                                      .replace(/[#*_`]/g, "")
-                                      .slice(0, 100) + "…"
+                                    .replace(/[#*_`]/g, "")
+                                    .slice(0, 100) + "…"
                                   : "No content preview available."}
                               </p>
 

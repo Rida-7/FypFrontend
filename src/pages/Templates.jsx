@@ -6,13 +6,19 @@ import "@react-pdf-viewer/default-layout/lib/styles/index.css";
 import { Download, ArrowRight, FileText, CheckCircle2 } from "lucide-react";
 
 const templates = [
-  { name: "WBS Template",      file: "/templates/WBS_Template_Project.pdf",        key: "WBS",         desc: "Work Breakdown Structure for full project planning." },
-  { name: "SRS Template",      file: "/templates/SRS_Template.pdf",                key: "SRS",         desc: "Software Requirements Specification document." },
-  { name: "Sprint Report",     file: "/templates/Sprint_Report_Template.pdf",      key: "SprintReport",desc: "Summarize sprint progress, blockers, and outcomes." },
-  { name: "Test Case Template",file: "/templates/Test_Case_Template.pdf",          key: "TestCase",    desc: "Structured test cases for QA and validation." },
-  { name: "User Manual",        file: "/templates/UserManual.pdf",                 key: "UserManual",    desc: "End-user guide explaining system features and usage." },
-  { name: "API Documentation",  file: "/templates/API_Template.pdf",               key: "API",       desc: "Detailed API endpoints, request/response formats, and integration guide." },
-  { name: "README File",        file: "/templates/Readme_File_Template.pdf",       key: "ReadMe",        desc: "Project overview, setup instructions, and usage guidelines." },
+  { name: "WBS Template",                      file: "/templates/WBS_Template_Project.pdf",                       key: "WBS",           desc: "Work Breakdown Structure for full project planning." },
+  { name: "SRS Template",                      file: "/templates/SRS_Template.pdf",                               key: "SRS",           desc: "Software Requirements Specification document." },
+  { name: "Sprint Report",                     file: "/templates/Sprint_Report_Template.pdf",                     key: "SprintReport",  desc: "Summarize sprint progress, blockers, and outcomes." },
+  { name: "Test Case Template",                file: "/templates/Test_Case_Template.pdf",                         key: "TestCase",      desc: "Structured test cases for QA and validation." },
+  { name: "User Manual",                       file: "/templates/UserManual.pdf",                                 key: "UserManual",    desc: "End-user guide explaining system features and usage." },
+  { name: "API Documentation",                 file: "/templates/API_Template.pdf",                               key: "API",           desc: "Detailed API endpoints, request/response formats, and integration guide." },
+  { name: "README File",                       file: "/templates/Readme_File_Template.pdf",                       key: "ReadMe",        desc: "Project overview, setup instructions, and usage guidelines." },
+  { name: "Authentication Flow Documentation", file: "/templates/Authentication_Flow_Documentation_Template.pdf", key: "authenticate",  desc: "Describes authentication architecture, flow, methods, and security handling."},
+  { name: "Backend Service Documentation",     file: "/templates/Backend_Service_Documentation_Template.pdf",     key: "backend",       desc: "Covers backend architecture, APIs, configuration, security, and service structure."},
+  { name: "Configuration Guide",               file: "/templates/Configuration_Guide_Template.pdf",               key: "configuration", desc: "Defines environment setup, configuration parameters, deployment settings, and dependencies."},
+  { name: "Database Schema Documentation",     file: "/templates/Database_Schema_Documentation_Template.pdf",     key: "database",      desc: "Describes database structure, tables, relationships, indexing, and constraints."},
+  { name: "Risk Management Report",            file: "/templates/Risk_Management_Report_Template.pdf",            key: "risk",          desc: "Identifies project risks, impact analysis, mitigation strategies, and monitoring plan."},
+  { name: "Deployment Guide",                  file: "/templates/Deployment_Guide_Template.pdf",                  key: "deploy",        desc: "Step-by-step deployment process including environment setup, CI/CD, and rollback procedures."}
 ];
 
 const cardTheme = {

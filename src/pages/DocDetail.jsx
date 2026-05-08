@@ -65,33 +65,35 @@ export default function DocumentDetail() {
   };
 
   const improveDocument = async () => {
-    if (!feedback.trim()) {
-      alert("Please enter feedback first");
-      return;
-    }
-    setImproving(true);
-    try {
-      const res = await axios.post(
-        `${BACKEND_URL}/workflow/improve-with-feedback`,
-        {
-          user_id: userId,
-          project_id: projectId,
-          template_name: templateName,
-          feedback: feedback,
-        }
-      );
-      if (res.data.status === "success") {
-        alert("✅ Document improved!");
-        fetchGeneratedDoc();
-        setFeedback("");
+  if (!feedback.trim()) {
+    alert("Please enter feedback first");
+    return;
+  }
+  setImproving(true);
+  try {
+    const res = await axios.post(
+      `${BACKEND_URL}/workflow/improve-with-feedback`,
+      {
+        user_id: userId,
+        project_id: projectId,
+        template_name: templateName,
+        feedback: feedback,
+        board_name: boardName,  // ← pass board_name
       }
-    } catch (err) {
-      console.error(err);
-      alert("❌ Failed to improve document");
-    } finally {
-      setImproving(false);
+    );
+    if (res.data.status === "success") {
+      // ← Use response directly instead of re-fetching
+      setFormattedContent(applyFormatting(res.data.generated_docs));
+      setFeedback("");
+      alert("✅ Document improved!");
     }
-  };
+  } catch (err) {
+    console.error(err);
+    alert("❌ Failed to improve document");
+  } finally {
+    setImproving(false);
+  }
+};
 
   const applyFormatting = (text) =>
     text

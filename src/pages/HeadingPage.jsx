@@ -64,46 +64,81 @@ export default function HeadingsPage() {
       });
       console.log("Headings response:", res.data);
 
-      if (res.data.status !== "success") { setHeadings([]); return; }
+      if (res.data.status !== "success") {
+        setHeadings([]);
+        return;
+      }
 
-      // Backend returns `sections` not `structure`
       const { type, sections, project_fields, table_columns } = res.data;
       setTemplateType(type || "");
 
       let extracted = [];
 
-      if (type === "section") {
-        // sections is a flat array of strings
-        extracted = (sections || []).filter(Boolean);
-
-      } else if (type === "table") {
+      // ── TABLE type ────────────────────────────────────
+      if (type === "table") {
         extracted = [...(project_fields || []), ...(table_columns || [])];
-
-      } else if (type === "hierarchical") {
-        const traverse = (items) => {
-          let r = [];
+      }
+      // ── SECTION + HIERARCHICAL (same nested structure) ──
+      else if (type === "section" || type === "hierarchical") {
+        const traverse = (items = []) => {
+          const result = [];
           items.forEach((sec) => {
-            if (sec.section) r.push(sec.section);
-            if (sec.tables) sec.tables.forEach((t) => t.headers && r.push(...t.headers));
-            if (sec.subsections) sec.subsections.forEach((sub) => {
-              if (sub.subsection) r.push(sub.subsection);
-              if (sub.tables) sub.tables.forEach((t) => t.headers && r.push(...t.headers));
-              if (sub.subsubsections) sub.subsubsections.forEach((s) => {
-                if (s.subsubsection) r.push(s.subsubsection);
-                if (s.tables) s.tables.forEach((t) => t.headers && r.push(...t.headers));
-              });
-            });
-          });
-          return r;
-        };
-        extracted = traverse(sections || []);
+            if (!sec) return;
 
-      } else {
-        // fallback
+            // Section level
+            if (sec.section) result.push(sec.section);
+
+            // Tables at section level
+            if (Array.isArray(sec.tables)) {
+              sec.tables.forEach((t) => {
+                if (Array.isArray(t.headers)) result.push(...t.headers);
+              });
+            }
+
+            // Subsections
+            if (Array.isArray(sec.subsections)) {
+              sec.subsections.forEach((sub) => {
+                if (!sub) return;
+                if (sub.subsection) result.push(sub.subsection);
+
+                if (Array.isArray(sub.tables)) {
+                  sub.tables.forEach((t) => {
+                    if (Array.isArray(t.headers)) result.push(...t.headers);
+                  });
+                }
+
+                // Subsubsections
+                if (Array.isArray(sub.subsubsections)) {
+                  sub.subsubsections.forEach((s) => {
+                    if (!s) return;
+                    // Backend ne kabhi "subsubsection" likha hai, kabhi "subsection" (API template me)
+                    if (s.subsubsection) result.push(s.subsubsection);
+                    if (s.subsection) result.push(s.subsection);
+
+                    if (Array.isArray(s.tables)) {
+                      s.tables.forEach((t) => {
+                        if (Array.isArray(t.headers)) result.push(...t.headers);
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          });
+          return result;
+        };
+
+        extracted = traverse(sections || []);
+      }
+      // ── Fallback ──────────────────────────────────────
+      else {
         extracted = (sections || project_fields || table_columns || [])
           .map((h) => (typeof h === "string" ? h : h?.section || null))
           .filter(Boolean);
       }
+
+      // Remove duplicates + empty
+      extracted = [...new Set(extracted.filter(Boolean))];
 
       setHeadings(extracted);
     } catch (err) {
@@ -215,8 +250,8 @@ export default function HeadingsPage() {
                   >
                     {/* Custom checkbox */}
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all duration-150 ${isChecked
-                        ? "bg-gradient-to-br from-indigo-600 to-purple-600 border-indigo-600"
-                        : "border-gray-300 bg-white"
+                      ? "bg-gradient-to-br from-indigo-600 to-purple-600 border-indigo-600"
+                      : "border-gray-300 bg-white"
                       }`}>
                       {isChecked && (
                         <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>

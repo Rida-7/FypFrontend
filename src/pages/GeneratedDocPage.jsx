@@ -6,7 +6,6 @@ import { ArrowLeft, FileText, RefreshCw, Send, CheckCircle2 } from "lucide-react
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-// ── Input parser (Doc 7) ──────────────────────────────────────────────────────
 const parseInput = (input) => {
   const match = input.match(/Add:(.*)/i);
   const new_headings = match
@@ -17,44 +16,39 @@ const parseInput = (input) => {
 
 export default function GeneratedDocPage() {
   const [searchParams] = useSearchParams();
-  const location       = useLocation();
+  const location = useLocation();
 
-  // ── Params: prefer location.state, fall back to searchParams ────────────────
-  const boardId      = location.state?.boardId      || searchParams.get("boardId");
-  const userId       = location.state?.userId       || searchParams.get("userId");
+  const boardId = location.state?.boardId || searchParams.get("boardId");
+  const userId = location.state?.userId || searchParams.get("userId");
   const templateName = location.state?.templateName || searchParams.get("templateName");
-  const teamId       = location.state?.teamId       || searchParams.get("teamId");
-  const source       = location.state?.source       || searchParams.get("source") || "trello";
+  const teamId = location.state?.teamId || searchParams.get("teamId");
+  const source = location.state?.source || searchParams.get("source") || "trello";
 
   const selectedHeadings =
     location.state?.selectedHeadings ||
     JSON.parse(localStorage.getItem("selected_headings") || "[]");
 
-  // ── State ────────────────────────────────────────────────────────────────────
-  const [messages, setMessages]           = useState([]);
-  const [loading, setLoading]             = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [interruptData, setInterruptData] = useState(null);
-  const [userInput, setUserInput]         = useState("");
+  const [userInput, setUserInput] = useState("");
 
   const hasStarted = useRef(false);
-  const inputRef   = useRef(null);
-  const bottomRef  = useRef(null);
+  const inputRef = useRef(null);
+  const bottomRef = useRef(null);
 
   const isFinal = messages.some((m) => m.content?.includes("Document marked as FINAL"));
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Auto-focus input when interrupt arrives
   useEffect(() => {
     if (interruptData && inputRef.current) {
       setTimeout(() => inputRef.current.focus(), 50);
     }
   }, [interruptData]);
 
-  // Auto-start workflow once
   useEffect(() => {
     if (hasStarted.current) return;
     if (!boardId || !userId || !templateName) return;
@@ -62,14 +56,13 @@ export default function GeneratedDocPage() {
     startWorkflow();
   }, []);
 
-  // ── Response handler ──────────────────────────────────────────────────────────
   const handleResponse = (data) => {
     if (data.status === "waiting_for_user") {
       const interrupt = data.interrupt?.value;
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: interrupt?.final_doc || "Document generated" },
-        { role: "system",    content: interrupt?.message   || "Review required" },
+        { role: "system", content: interrupt?.message || "Review required" },
       ]);
       setInterruptData(interrupt);
       return;
@@ -80,18 +73,17 @@ export default function GeneratedDocPage() {
     setMessages((prev) => [...prev, { role: "assistant", content: doc }]);
   };
 
-  // ── Start workflow ────────────────────────────────────────────────────────────
   const startWorkflow = async () => {
     setLoading(true);
     try {
       const res = await axios.post(`${BACKEND_URL}/workflow/start`, {
-        project_id:        boardId,
-        user_id:           userId,
-        template:          templateName,
+        project_id: boardId,
+        user_id: userId,
+        template: templateName,
         source,
-        team_id:           teamId,
+        team_id: teamId,
         selected_headings: selectedHeadings,
-        pdf_headings:      selectedHeadings,
+        pdf_headings: selectedHeadings,
       });
       handleResponse(res.data);
     } catch (err) {
@@ -102,18 +94,17 @@ export default function GeneratedDocPage() {
     }
   };
 
-  // ── Finalize ──────────────────────────────────────────────────────────────────
   const handleFinalize = async () => {
     setLoading(true);
     try {
       const res = await axios.post(`${BACKEND_URL}/workflow/resume`, {
-        user_id:    userId,
+        user_id: userId,
         project_id: boardId,
-        template:   templateName,
+        template: templateName,
         source,
-        team_id:    teamId,
+        team_id: teamId,
         user_input: "FINALIZE",
-        is_final:   true,
+        is_final: true,
       });
       handleResponse(res.data);
       setMessages((prev) => [...prev, { role: "system", content: "Document marked as FINAL" }]);
@@ -124,7 +115,6 @@ export default function GeneratedDocPage() {
     }
   };
 
-  // ── Send feedback ─────────────────────────────────────────────────────────────
   const handleSendFeedback = async () => {
     if (!userInput.trim()) return;
     const { user_feedback, new_headings } = parseInput(userInput);
@@ -135,11 +125,11 @@ export default function GeneratedDocPage() {
 
     try {
       const res = await axios.post(`${BACKEND_URL}/workflow/resume`, {
-        user_id:    userId,
+        user_id: userId,
         project_id: boardId,
-        template:   templateName,
+        template: templateName,
         source,
-        team_id:    teamId,
+        team_id: teamId,
         user_input: user_feedback,
         new_headings,
       });
@@ -151,34 +141,30 @@ export default function GeneratedDocPage() {
     }
   };
 
-  // ── Initial loading screen ────────────────────────────────────────────────────
-  if (loading && messages.length === 0) return (
-    <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
-      <div className="fixed inset-0 -z-10 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_40%_at_50%_0%,rgba(99,102,241,0.06),transparent)]" />
-      </div>
-      <div className="text-center">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
-          <RefreshCw className="w-6 h-6 text-indigo-500 animate-spin" />
+  if (loading && messages.length === 0)
+    return (
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="fixed inset-0 -z-10 pointer-events-none">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_40%_at_50%_0%,rgba(99,102,241,0.06),transparent)]" />
         </div>
-        <p className="text-gray-500 font-medium">Generating your document…</p>
-        <p className="text-gray-400 text-sm mt-1">This may take a moment</p>
+        <div className="text-center">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
+            <RefreshCw className="w-6 h-6 text-indigo-500 animate-spin" />
+          </div>
+          <p className="text-gray-500 font-medium">Generating your document…</p>
+          <p className="text-gray-400 text-sm mt-1">This may take a moment</p>
+        </div>
       </div>
-    </div>
-  );
+    );
 
-  // ── Main UI ───────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col">
-
-      {/* Background glow */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_40%_at_50%_0%,rgba(99,102,241,0.06),transparent)]" />
       </div>
 
       <div className="max-w-4xl w-full mx-auto px-6 pt-8 pb-6 flex flex-col flex-1 min-h-0">
 
-        {/* Back link */}
         <Link
           to="/documents"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-indigo-600 transition-colors mb-6 group w-fit"
@@ -187,7 +173,6 @@ export default function GeneratedDocPage() {
           Back to documents
         </Link>
 
-        {/* Page header */}
         <div className="mb-6">
           <div className="flex items-center gap-2.5 mb-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-sm">
@@ -202,63 +187,122 @@ export default function GeneratedDocPage() {
           </h1>
         </div>
 
-        {/* Chat card */}
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
 
-          {/* Top accent bar */}
           <div className="h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 flex-shrink-0" />
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5 min-h-0">
             {messages.map((msg, i) => {
-              if (msg.role === "assistant") return (
-                <div key={i} className="prose prose-sm max-w-none text-gray-700 leading-relaxed
-                  prose-headings:font-bold prose-headings:text-gray-900
-                  prose-h1:text-2xl prose-h1:mt-8 prose-h1:mb-3
-                  prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-2
-                  prose-h3:text-base prose-h3:mt-4 prose-h3:mb-1
-                  prose-p:text-gray-600 prose-p:leading-relaxed
-                  prose-li:text-gray-600 prose-strong:text-gray-800
-                ">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                </div>
-              );
+              if (msg.role === "assistant")
+                return (
+                  <div
+                    key={i}
+                    className="prose prose-sm max-w-none text-gray-700 leading-relaxed
+                      prose-headings:font-bold prose-headings:text-gray-900
+                      prose-h1:text-2xl prose-h1:mt-8 prose-h1:mb-3
+                      prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-2
+                      prose-h3:text-base prose-h3:mt-4 prose-h3:mb-1
+                      prose-p:text-gray-600 prose-p:leading-relaxed
+                      prose-li:text-gray-600 prose-strong:text-gray-800
+                      prose-table:w-full prose-table:border-collapse prose-table:my-4
+                      prose-th:bg-indigo-50 prose-th:border prose-th:border-indigo-200 prose-th:px-4 prose-th:py-2.5 prose-th:text-left prose-th:font-semibold prose-th:text-gray-900
+                      prose-td:border prose-td:border-gray-200 prose-td:px-4 prose-td:py-2.5 prose-td:text-gray-700
+                      prose-tbody:divide-y prose-tbody:divide-gray-100
+                    "
+                  >
+                    <ReactMarkdown
+                      components={{
+                        table: ({ node, ...props }) => (
+                          <div className="overflow-x-auto my-4 rounded-lg border border-gray-200 shadow-sm">
+                            <table className="w-full" {...props} />
+                          </div>
+                        ),
+                        thead: ({ node, ...props }) => (
+                          <thead className="bg-gradient-to-r from-indigo-50 to-purple-50" {...props} />
+                        ),
+                        th: ({ node, ...props }) => (
+                          <th
+                            className="px-4 py-3 text-left text-sm font-semibold text-gray-900 border-b-2 border-indigo-200"
+                            {...props}
+                          />
+                        ),
+                        td: ({ node, ...props }) => (
+                          <td
+                            className="px-4 py-2.5 text-sm text-gray-700 border-b border-gray-100"
+                            {...props}
+                          />
+                        ),
+                        tbody: ({ node, ...props }) => (
+                          <tbody className="divide-y divide-gray-100" {...props} />
+                        ),
+                        tr: ({ node, ...props }) => (
+                          <tr
+                            className="hover:bg-indigo-50/30 transition-colors"
+                            {...props}
+                          />
+                        ),
+                        h1: ({ node, ...props }) => (
+                          <h1 className="text-2xl font-bold text-gray-900 mt-8 mb-3" {...props} />
+                        ),
+                        h2: ({ node, ...props }) => (
+                          <h2 className="text-xl font-bold text-gray-900 mt-6 mb-2 border-b-2 border-indigo-200 pb-2" {...props} />
+                        ),
+                        h3: ({ node, ...props }) => (
+                          <h3 className="text-lg font-semibold text-gray-800 mt-4 mb-2" {...props} />
+                        ),
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                );
 
-              if (msg.role === "system") return (
-                <div
-                  key={i}
-                  className={`flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-medium border ${
-                    msg.content.includes("FINAL")
-                      ? "bg-green-50 border-green-100 text-green-700"
-                      : "bg-amber-50 border-amber-100 text-amber-700"
-                  }`}
-                >
-                  {msg.content.includes("FINAL")
-                    ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                    : <RefreshCw className="w-4 h-4 flex-shrink-0" />
-                  }
-                  {msg.content}
-                </div>
-              );
-
-              if (msg.role === "user") return (
-                <div key={i} className="flex justify-end">
-                  <div className="max-w-[75%] bg-gradient-to-br from-indigo-600 to-purple-600 text-white text-sm rounded-2xl rounded-tr-sm px-4 py-2.5 leading-relaxed shadow-sm">
+              if (msg.role === "system")
+                return (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-medium border ${
+                      msg.content.includes("FINAL")
+                        ? "bg-green-50 border-green-100 text-green-700"
+                        : "bg-amber-50 border-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {msg.content.includes("FINAL") ? (
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 flex-shrink-0" />
+                    )}
                     {msg.content}
                   </div>
-                </div>
-              );
+                );
+
+              if (msg.role === "user")
+                return (
+                  <div key={i} className="flex justify-end">
+                    <div className="max-w-[75%] bg-gradient-to-br from-indigo-600 to-purple-600 text-white text-sm rounded-2xl rounded-tr-sm px-4 py-2.5 leading-relaxed shadow-sm">
+                      {msg.content}
+                    </div>
+                  </div>
+                );
 
               return null;
             })}
 
-            {/* Typing indicator */}
             {loading && (
               <div className="flex items-center gap-2 text-gray-400 text-sm">
                 <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <span
+                    className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  />
                 </div>
                 AI is thinking…
               </div>
@@ -267,10 +311,8 @@ export default function GeneratedDocPage() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Input area */}
           <div className="flex-shrink-0 border-t border-gray-100 px-6 py-4 flex flex-col gap-3">
 
-            {/* Finalize button */}
             {interruptData && !isFinal && (
               <div className="flex justify-end">
                 <button
@@ -284,7 +326,6 @@ export default function GeneratedDocPage() {
               </div>
             )}
 
-            {/* Feedback row */}
             <div className="flex items-center gap-2">
               <input
                 ref={inputRef}
