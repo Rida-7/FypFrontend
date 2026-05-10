@@ -14,6 +14,13 @@ import DocumentsPage from "./pages/DocumentPage";
 import DocumentDetail from "./pages/DocDetail";
 import Dashboard from "./pages/Dashboard";
 import SlackChannelSelector from "./pages/SlackChannelSelector";
+import GitHubRepoSelector from "./pages/GitHubRepoSelector";
+import Analytics from "./pages/Analytics";
+import PricingPage from "./pages/PricingPage";
+import SubscriptionPage from "./pages/SubscriptionPage";
+import PaymentPage from "./pages/PaymentPage";
+// import PaymentSuccess from "./pages/PaymentSuccess";
+import TeamWorkspacePage from "./pages/TeamWorkspacePage";
 
 
 
@@ -34,6 +41,17 @@ createRoot(document.getElementById('root')).render(
         <Route path="/documents/:template_name" element={<DocumentDetail />} />
         <Route path="/dashboard" element={ <Dashboard />} />
         <Route path="/slack" element={<SlackChannelSelector />} />
+        
+        <Route path="/github/repos" element={<GitHubRepoSelector />} />
+        <Route path="/analytics" element={<Analytics />} />
+
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/subscription" element={<SubscriptionPage />} />
+
+        {/* ================= PAYMENT FLOW ================= */}
+        <Route path="/payment" element={<PaymentPage />} />
+        {/* <Route path="/payment-success" element={<PaymentSuccess />} /> */}
+        <Route path="/workspace" element={<TeamWorkspacePage />} />
 
 
 

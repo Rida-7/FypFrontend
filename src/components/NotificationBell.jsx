@@ -1,16 +1,18 @@
-import React, { useEffect, useState } from "react";
-import { Bell } from "lucide-react";
+import React, { useEffect, useState, useRef } from "react";
+import { Bell, X } from "lucide-react";
 import api from "../api";
 
 export default function NotificationBell({ userId }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState({});
   const [unreadCount, setUnreadCount] = useState(0);
+  const dropdownRef = useRef(null);
 
   const fetchNotifications = async () => {
     try {
-      const res = await api.get(`/trello/notifications/${userId}`);
-      setData(res.data.notifications_by_board || {});
+      const res = await api.get(`/notifications/${userId}`);
+
+      setData(res.data.notifications || {});
       setUnreadCount(res.data.unread_count || 0);
     } catch (err) {
       console.error("❌ Notification fetch failed", err);
@@ -26,13 +28,28 @@ export default function NotificationBell({ userId }) {
     return () => clearInterval(interval);
   }, [userId]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const markRead = async (id) => {
-    // 🔥 Optimistic UI update
     setData((prev) => {
       const updated = structuredClone(prev);
 
-      for (const board of Object.values(updated)) {
-        const n = board.notifications.find((x) => x._id === id);
+      for (const group of Object.values(updated)) {
+        const n = group.find?.((x) => x._id === id);
         if (n) n.is_read = true;
       }
 
@@ -49,7 +66,8 @@ export default function NotificationBell({ userId }) {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
+      {/* 🔔 Bell */}
       <button
         onClick={() => setOpen(!open)}
         className="relative p-2"
@@ -63,10 +81,20 @@ export default function NotificationBell({ userId }) {
         )}
       </button>
 
+      {/* ================= Dropdown ================= */}
       {open && (
         <div className="absolute right-0 mt-2 w-96 bg-white shadow-xl rounded-xl border max-h-96 overflow-y-auto z-50">
-          <div className="p-3 font-semibold border-b">
-            Notifications
+
+          {/* Header */}
+          <div className="flex justify-between items-center p-3 font-semibold border-b">
+            <span>Notifications</span>
+
+            <button
+              onClick={() => setOpen(false)}
+              className="p-1 rounded hover:bg-gray-100"
+            >
+              <X size={18} />
+            </button>
           </div>
 
           {Object.entries(data).length === 0 && (
@@ -75,13 +103,17 @@ export default function NotificationBell({ userId }) {
             </div>
           )}
 
-          {Object.entries(data).map(([boardId, board]) => (
-            <div key={boardId}>
-              <div className="bg-gray-100 px-3 py-2 font-semibold">
-                {board.board_name}
+          {/* 🔥 UPDATED MULTI-SOURCE UI */}
+          {Object.entries(data).map(([source, notifications]) => (
+            <div key={source}>
+
+              {/* Source Header */}
+              <div className="bg-gray-100 px-3 py-2 font-semibold uppercase">
+                {source}
               </div>
 
-              {board.notifications.map((n) => (
+              {/* Notifications */}
+              {notifications.map((n) => (
                 <div
                   key={n._id}
                   className={`p-3 border-b text-sm ${
@@ -96,7 +128,10 @@ export default function NotificationBell({ userId }) {
 
                   {!n.is_read && (
                     <button
-                      onClick={() => markRead(n._id)}
+                      onClick={() => {
+                        markRead(n._id);
+                        setOpen(false);
+                      }}
                       className="text-xs text-indigo-600 mt-1"
                     >
                       Mark as read

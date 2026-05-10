@@ -8,10 +8,10 @@ import {
   SiGithub,
 } from "react-icons/si";
 import SlackChannelSelector from "../pages/SlackChannelSelector";
+
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function Integrations() {
-
   const [showSlackSelector, setShowSlackSelector] = React.useState(false);
 
   // ------------------ Trello OAuth ------------------
@@ -19,23 +19,8 @@ export default function Integrations() {
     const userId = localStorage.getItem("userId");
     if (!userId) return alert("User ID not found");
 
-    const width = 600;
-    const height = 700;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
-    const authWindow = window.open(
-      `${BACKEND_URL}/trello/connect?user_id=${userId}`,
-      "TrelloAuth",
-      `width=${width},height=${height},left=${left},top=${top}`
-    );
-
-    const timer = setInterval(() => {
-      if (authWindow.closed) {
-        clearInterval(timer);
-        console.log("Trello window closed");
-      }
-    }, 1000);
+    // Same tab me redirect
+    window.location.href = `${BACKEND_URL}/trello/connect?user_id=${userId}`;
   };
 
   // ------------------ Slack OAuth ------------------
@@ -43,23 +28,17 @@ export default function Integrations() {
     const userId = localStorage.getItem("userId");
     if (!userId) return alert("User ID not found");
 
-    const width = 600;
-    const height = 700;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
+    // Same tab me redirect
+    window.location.href = `${BACKEND_URL}/slack/auth/connect?user_id=${userId}`;
+  };
 
-    const authWindow = window.open(
-      `${BACKEND_URL}/slack/auth/connect?user_id=${userId}`,
-      "SlackAuth",
-      `width=${width},height=${height},left=${left},top=${top}`
-    );
+  // ------------------ GitHub OAuth ------------------
+  const connectGithub = () => {
+    const userId = localStorage.getItem("userId");
+    if (!userId) return alert("User ID not found");
 
-    const timer = setInterval(() => {
-      if (authWindow.closed) {
-        clearInterval(timer);
-        navigate("/slack/select");   //  Show workspace selector
-      }
-    }, 1000);
+    // Same tab me redirect
+    window.location.href = `${BACKEND_URL}/github/connect?user_id=${userId}`;
   };
 
   const integrations = [
@@ -70,12 +49,12 @@ export default function Integrations() {
       action: "Connect to Trello",
       onClick: connectTrello,
     },
-    {
-      name: "ClickUp",
-      icon: <SiClickup className="text-[#7B68EE] w-12 h-12" />,
-      description: "Sync tasks, projects, and workflows effortlessly.",
-      action: "Connect to ClickUp",
-    },
+    // {
+    //   name: "ClickUp",
+    //   icon: <SiClickup className="text-[#7B68EE] w-12 h-12" />,
+    //   description: "Sync tasks, projects, and workflows effortlessly.",
+    //   action: "Connect to ClickUp",
+    // },
     {
       name: "Slack",
       icon: <SiSlack className="text-[#4A154B] w-12 h-12" />,
@@ -83,33 +62,31 @@ export default function Integrations() {
       action: "Connect to Slack",
       onClick: connectSlack,
     },
-    {
-      name: "Notion",
-      icon: <SiNotion className="text-black w-12 h-12" />,
-      description: "Integrate your Notion workspace to organize everything.",
-      action: "Connect to Notion",
-    },
-    {
-      name: "Jira",
-      icon: <SiJira className="text-[#0052CC] w-12 h-12" />,
-      description: "Track issues and manage sprints directly from your app.",
-      action: "Connect to Jira",
-    },
+    // {
+    //   name: "Notion",
+    //   icon: <SiNotion className="text-black w-12 h-12" />,
+    //   description: "Integrate your Notion workspace to organize everything.",
+    //   action: "Connect to Notion",
+    // },
+    // {
+    //   name: "Jira",
+    //   icon: <SiJira className="text-[#0052CC] w-12 h-12" />,
+    //   description: "Track issues and manage sprints directly from your app.",
+    //   action: "Connect to Jira",
+    // },
     {
       name: "GitHub",
       icon: <SiGithub className="text-gray-800 w-12 h-12" />,
       description: "Link your repositories and automate your development flow.",
       action: "Connect to GitHub",
+      onClick: connectGithub,
     },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-16 px-6">
-
       <div className="max-w-5xl mx-auto text-center mb-16">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Integrations
-        </h1>
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">Integrations</h1>
         <p className="text-gray-600 text-lg">
           Connect your favorite productivity tools and streamline your workflow.
         </p>
@@ -144,7 +121,6 @@ export default function Integrations() {
         ))}
       </div>
 
-      {/* Slack Workspace Selector Appears Here */}
       {showSlackSelector && (
         <div className="max-w-4xl mx-auto mt-16">
           <SlackChannelSelector />

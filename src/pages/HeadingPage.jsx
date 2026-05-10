@@ -15,36 +15,43 @@ export default function HeadingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ── IDs & source (File 4 logic) ──────────────────────
   const source =
     searchParams.get("source") ||
     location.state?.source ||
-    localStorage.getItem("source");
+    localStorage.getItem("source") ||
+    "trello";
 
   const boardId =
     searchParams.get("boardId") ||
     location.state?.boardId ||
     localStorage.getItem("boardId");
 
+  const repoId =
+    searchParams.get("repoId") ||
+    location.state?.repoId ||
+    localStorage.getItem("repoId");
+
   const channelId =
     searchParams.get("channelId") ||
     location.state?.channelId ||
     localStorage.getItem("channelId");
 
-  const projectId = source === "slack" ? channelId : boardId;
+  let projectId = "";
+  if (source === "slack") projectId = channelId;
+  else if (source === "github") projectId = repoId;
+  else projectId = boardId;
 
   const templateKey = searchParams.get("templateKey");
   const templateName = searchParams.get("templateName");
+  const boardName = searchParams.get("boardName") || projectId;
 
-
-  // Persist to localStorage (File 4)
   useEffect(() => {
     if (channelId) localStorage.setItem("channelId", channelId);
-    if (boardId) localStorage.setItem("boardId", boardId);
-    if (source) localStorage.setItem("source", source);
-  }, [channelId, boardId, source]);
+    if (boardId)   localStorage.setItem("boardId", boardId);
+    if (repoId)    localStorage.setItem("repoId", repoId);
+    if (source)    localStorage.setItem("source", source);
+  }, [channelId, boardId, repoId, source]);
 
-  // ── getUserId (File 4 logic) ──────────────────────────
   const getUserId = () => {
     const raw = localStorage.getItem("userId");
     if (!raw) return null;
@@ -56,90 +63,55 @@ export default function HeadingsPage() {
     }
   };
 
-  // ── fetchHeadings (merged: File 3 hierarchical + File 4 fallback) ──
   const fetchHeadings = async (key) => {
     try {
       const res = await axios.get(`${BACKEND_URL}/templates/headings`, {
         params: { template: key },
       });
-      console.log("Headings response:", res.data);
 
-      if (res.data.status !== "success") {
-        setHeadings([]);
-        return;
-      }
+      if (res.data.status !== "success") { setHeadings([]); return; }
 
       const { type, sections, project_fields, table_columns } = res.data;
       setTemplateType(type || "");
 
       let extracted = [];
 
-      // ── TABLE type ────────────────────────────────────
       if (type === "table") {
         extracted = [...(project_fields || []), ...(table_columns || [])];
-      }
-      // ── SECTION + HIERARCHICAL (same nested structure) ──
-      else if (type === "section" || type === "hierarchical") {
+      } else if (type === "section" || type === "hierarchical") {
         const traverse = (items = []) => {
           const result = [];
           items.forEach((sec) => {
             if (!sec) return;
-
-            // Section level
             if (sec.section) result.push(sec.section);
-
-            // Tables at section level
-            if (Array.isArray(sec.tables)) {
-              sec.tables.forEach((t) => {
-                if (Array.isArray(t.headers)) result.push(...t.headers);
-              });
-            }
-
-            // Subsections
-            if (Array.isArray(sec.subsections)) {
+            if (Array.isArray(sec.tables))
+              sec.tables.forEach((t) => { if (Array.isArray(t.headers)) result.push(...t.headers); });
+            if (Array.isArray(sec.subsections))
               sec.subsections.forEach((sub) => {
                 if (!sub) return;
                 if (sub.subsection) result.push(sub.subsection);
-
-                if (Array.isArray(sub.tables)) {
-                  sub.tables.forEach((t) => {
-                    if (Array.isArray(t.headers)) result.push(...t.headers);
-                  });
-                }
-
-                // Subsubsections
-                if (Array.isArray(sub.subsubsections)) {
+                if (Array.isArray(sub.tables))
+                  sub.tables.forEach((t) => { if (Array.isArray(t.headers)) result.push(...t.headers); });
+                if (Array.isArray(sub.subsubsections))
                   sub.subsubsections.forEach((s) => {
                     if (!s) return;
-                    // Backend ne kabhi "subsubsection" likha hai, kabhi "subsection" (API template me)
                     if (s.subsubsection) result.push(s.subsubsection);
                     if (s.subsection) result.push(s.subsection);
-
-                    if (Array.isArray(s.tables)) {
-                      s.tables.forEach((t) => {
-                        if (Array.isArray(t.headers)) result.push(...t.headers);
-                      });
-                    }
+                    if (Array.isArray(s.tables))
+                      s.tables.forEach((t) => { if (Array.isArray(t.headers)) result.push(...t.headers); });
                   });
-                }
               });
-            }
           });
           return result;
         };
-
         extracted = traverse(sections || []);
-      }
-      // ── Fallback ──────────────────────────────────────
-      else {
+      } else {
         extracted = (sections || project_fields || table_columns || [])
           .map((h) => (typeof h === "string" ? h : h?.section || null))
           .filter(Boolean);
       }
 
-      // Remove duplicates + empty
       extracted = [...new Set(extracted.filter(Boolean))];
-
       setHeadings(extracted);
     } catch (err) {
       console.error(err);
@@ -149,7 +121,6 @@ export default function HeadingsPage() {
 
   useEffect(() => { if (templateKey) fetchHeadings(templateKey); }, [templateKey]);
 
-  // ── Toggle helpers ────────────────────────────────────
   const toggle = (h) =>
     setSelectedHeadings((prev) =>
       prev.includes(h) ? prev.filter((x) => x !== h) : [...prev, h]
@@ -158,11 +129,10 @@ export default function HeadingsPage() {
   const toggleAll = () =>
     setSelectedHeadings(selectedHeadings.length === headings.length ? [] : [...headings]);
 
-  // ── startWorkflow (File 4: navigate with state, no axios call) ────
   const startWorkflow = () => {
     const userId = getUserId();
-    if (!userId) { alert("User not found. Please log in again."); return; }
-    if (!projectId) { alert("Missing project/channel ID."); return; }
+    if (!userId)                  { alert("User not found. Please log in again."); return; }
+    if (!projectId)               { alert("Missing project/channel/repo ID."); return; }
     if (!selectedHeadings.length) { alert("Select at least one section."); return; }
 
     localStorage.setItem("selected_headings", JSON.stringify(selectedHeadings));
@@ -173,99 +143,118 @@ export default function HeadingsPage() {
     navigate("/generated-doc", {
       state: {
         boardId: projectId,
+        repoId,
         userId,
-        templateName: templateKey,
+        templateName: templateName,
         source,
         teamId: localStorage.getItem("teamId") || "",
         selectedHeadings,
         templateType,
+        doc_type: templateKey?.toLowerCase(),
+        boardName,
       },
     });
   };
 
   const allSelected = selectedHeadings.length === headings.length && headings.length > 0;
 
-  // ── UI (File 3) ───────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#fafafa]">
-
-      {/* Ambient background */}
-      <div className="fixed inset-0 -z-10 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_40%_at_50%_0%,rgba(99,102,241,0.06),transparent)]" />
-      </div>
-
-      <div className="max-w-4xl mx-auto px-6 pt-8 pb-20">
+    // ✅ No min-h-screen, no fixed background div — just fit content height
+    <div style={{ backgroundColor: "#fafafa", paddingBottom: "24px" }}>
+      <div style={{ maxWidth: "896px", margin: "0 auto", padding: "32px 24px 0" }}>
 
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-sm">
-              <FileText className="w-4 h-4 text-white" />
+        <div style={{ marginBottom: "32px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+            <div style={{
+              width: "32px", height: "32px", borderRadius: "8px",
+              background: "linear-gradient(135deg, #4f46e5, #9333ea)",
+              display: "flex", alignItems: "center", justifyContent: "center"
+            }}>
+              <FileText size={16} color="white" />
             </div>
-            <span className="text-sm font-bold tracking-widest text-indigo-500 uppercase">Configure</span>
+            <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: "0.1em", color: "#6366f1", textTransform: "uppercase" }}>
+              Configure
+            </span>
           </div>
-
-          <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 tracking-tight">
+          <h1 style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", fontWeight: "800", color: "#111827", margin: "0 0 4px", lineHeight: 1.1 }}>
             {templateName || "Template"}
           </h1>
-          <p className="mt-1 text-gray-400 text-base">
+          <p style={{ color: "#9ca3af", fontSize: "15px", margin: 0 }}>
             Choose the sections to include in your generated document.
           </p>
         </div>
 
         {/* Headings card */}
         {headings.length === 0 ? (
-          <div className="bg-white border border-dashed border-gray-200 rounded-2xl py-16 flex flex-col items-center gap-3">
-            <CheckSquare className="w-8 h-8 text-gray-300" />
-            <p className="text-gray-500 font-medium">No sections found for this template.</p>
+          <div style={{
+            background: "white", border: "1.5px dashed #e5e7eb",
+            borderRadius: "16px", padding: "64px 24px",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: "12px"
+          }}>
+            <CheckSquare size={32} color="#d1d5db" />
+            <p style={{ color: "#6b7280", fontWeight: "500", margin: 0 }}>No sections found for this template.</p>
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-6">
-
+          <div style={{
+            background: "white", border: "1px solid #e5e7eb",
+            borderRadius: "16px", overflow: "hidden", marginBottom: "16px"
+          }}>
             {/* Top gradient bar */}
-            <div className="h-0.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+            <div style={{ height: "3px", background: "linear-gradient(to right, #6366f1, #a855f7, #ec4899)" }} />
 
             {/* Select all row */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <span className="text-sm font-semibold text-gray-700">
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "16px 24px", borderBottom: "1px solid #f3f4f6"
+            }}>
+              <span style={{ fontSize: "13px", fontWeight: "600", color: "#374151" }}>
                 {selectedHeadings.length} of {headings.length} selected
               </span>
               <button
                 onClick={toggleAll}
-                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+                style={{ fontSize: "13px", fontWeight: "600", color: "#6366f1", background: "none", border: "none", cursor: "pointer", padding: 0 }}
               >
                 {allSelected ? "Deselect all" : "Select all"}
               </button>
             </div>
 
-            {/* Headings list */}
-            <div className="divide-y divide-gray-50 max-h-[55vh] overflow-y-auto">
+            {/* Headings list — scrollable, no fixed vh */}
+            <div style={{ maxHeight: "320px", overflowY: "auto" }}>
               {headings.map((h, idx) => {
                 const isChecked = selectedHeadings.includes(h);
                 return (
                   <label
                     key={idx}
-                    className={`flex items-center gap-4 px-6 py-3.5 cursor-pointer transition-colors duration-150 ${isChecked ? "bg-indigo-50/60" : "hover:bg-gray-50"
-                      } ${loading ? "pointer-events-none opacity-50" : ""}`}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "16px",
+                      padding: "14px 24px", cursor: loading ? "not-allowed" : "pointer",
+                      opacity: loading ? 0.5 : 1,
+                      backgroundColor: isChecked ? "rgba(238,242,255,0.6)" : "white",
+                      borderBottom: idx < headings.length - 1 ? "1px solid #f9fafb" : "none",
+                      transition: "background-color 0.1s",
+                    }}
                   >
                     {/* Custom checkbox */}
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all duration-150 ${isChecked
-                      ? "bg-gradient-to-br from-indigo-600 to-purple-600 border-indigo-600"
-                      : "border-gray-300 bg-white"
-                      }`}>
+                    <div style={{
+                      width: "20px", height: "20px", borderRadius: "6px", flexShrink: 0,
+                      border: isChecked ? "2px solid #6366f1" : "2px solid #d1d5db",
+                      background: isChecked ? "linear-gradient(135deg, #4f46e5, #9333ea)" : "white",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      transition: "all 0.15s",
+                    }}>
                       {isChecked && (
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={3}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       )}
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => toggle(h)}
-                      className="sr-only"
-                    />
-                    <span className={`text-[15px] leading-relaxed ${isChecked ? "text-gray-900 font-medium" : "text-gray-600"}`}>
+                    <input type="checkbox" checked={isChecked} onChange={() => toggle(h)} style={{ display: "none" }} />
+                    <span style={{
+                      fontSize: "15px", lineHeight: "1.6",
+                      color: isChecked ? "#111827" : "#4b5563",
+                      fontWeight: isChecked ? "500" : "400",
+                    }}>
                       {h}
                     </span>
                   </label>
@@ -279,22 +268,36 @@ export default function HeadingsPage() {
         <button
           onClick={startWorkflow}
           disabled={loading || headings.length === 0}
-          className="w-full py-3.5 rounded-xl text-white font-semibold text-base bg-gradient-to-r from-indigo-600 to-purple-600 hover:shadow-lg hover:shadow-indigo-200 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+          style={{
+            width: "100%", padding: "14px", borderRadius: "12px",
+            background: loading || headings.length === 0
+              ? "#c4b5fd"
+              : "linear-gradient(to right, #4f46e5, #9333ea)",
+            color: "white", fontWeight: "600", fontSize: "15px",
+            border: "none", cursor: loading || headings.length === 0 ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+            transition: "opacity 0.2s",
+          }}
         >
           {loading ? (
             <>
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span style={{
+                width: "16px", height: "16px", border: "2px solid white",
+                borderTopColor: "transparent", borderRadius: "50%",
+                display: "inline-block", animation: "spin 0.7s linear infinite"
+              }} />
               Processing…
             </>
           ) : (
             <>
-              <Zap className="w-4 h-4" />
+              <Zap size={16} />
               Start Workflow
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight size={16} />
             </>
           )}
         </button>
 
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>
   );

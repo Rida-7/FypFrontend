@@ -1,24 +1,29 @@
 import React, { useState } from "react";
-import { useNavigate, useSearchParams, useParams } from "react-router-dom";
+import {
+  useNavigate,
+  useSearchParams,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
 import { Download, ArrowRight, FileText, CheckCircle2 } from "lucide-react";
 
 const templates = [
-  { name: "WBS Template",                      file: "/templates/WBS_Template_Project.pdf",                       key: "WBS",           desc: "Work Breakdown Structure for full project planning." },
-  { name: "SRS Template",                      file: "/templates/SRS_Template.pdf",                               key: "SRS",           desc: "Software Requirements Specification document." },
+  { name: "WBS Document",                      file: "/templates/WBS_Template_Project.pdf",                       key: "WBS",           desc: "Work Breakdown Structure for full project planning." },
+  { name: "SRS Document",                      file: "/templates/SRS_Template.pdf",                               key: "SRS",           desc: "Software Requirements Specification document." },
   { name: "Sprint Report",                     file: "/templates/Sprint_Report_Template.pdf",                     key: "SprintReport",  desc: "Summarize sprint progress, blockers, and outcomes." },
-  { name: "Test Case Template",                file: "/templates/Test_Case_Template.pdf",                         key: "TestCase",      desc: "Structured test cases for QA and validation." },
+  { name: "Test Case Document",                file: "/templates/Test_Case_Template.pdf",                         key: "TestCase",      desc: "Structured test cases for QA and validation." },
   { name: "User Manual",                       file: "/templates/UserManual.pdf",                                 key: "UserManual",    desc: "End-user guide explaining system features and usage." },
   { name: "API Documentation",                 file: "/templates/API_Template.pdf",                               key: "API",           desc: "Detailed API endpoints, request/response formats, and integration guide." },
   { name: "README File",                       file: "/templates/Readme_File_Template.pdf",                       key: "ReadMe",        desc: "Project overview, setup instructions, and usage guidelines." },
-  { name: "Authentication Flow Documentation", file: "/templates/Authentication_Flow_Documentation_Template.pdf", key: "authenticate",  desc: "Describes authentication architecture, flow, methods, and security handling."},
-  { name: "Backend Service Documentation",     file: "/templates/Backend_Service_Documentation_Template.pdf",     key: "backend",       desc: "Covers backend architecture, APIs, configuration, security, and service structure."},
-  { name: "Configuration Guide",               file: "/templates/Configuration_Guide_Template.pdf",               key: "configuration", desc: "Defines environment setup, configuration parameters, deployment settings, and dependencies."},
-  { name: "Database Schema Documentation",     file: "/templates/Database_Schema_Documentation_Template.pdf",     key: "database",      desc: "Describes database structure, tables, relationships, indexing, and constraints."},
-  { name: "Risk Management Report",            file: "/templates/Risk_Management_Report_Template.pdf",            key: "risk",          desc: "Identifies project risks, impact analysis, mitigation strategies, and monitoring plan."},
-  { name: "Deployment Guide",                  file: "/templates/Deployment_Guide_Template.pdf",                  key: "deploy",        desc: "Step-by-step deployment process including environment setup, CI/CD, and rollback procedures."}
+  { name: "Authentication Flow Documentation", file: "/templates/Authentication_Flow_Documentation_Template.pdf", key: "authenticate",  desc: "Describes authentication architecture, flow, methods, and security handling." },
+  { name: "Backend Service Documentation",     file: "/templates/Backend_Service_Documentation_Template.pdf",     key: "backend",       desc: "Covers backend architecture, APIs, configuration, security, and service structure." },
+  { name: "Configuration Guide",               file: "/templates/Configuration_Guide_Template.pdf",               key: "configuration", desc: "Defines environment setup, configuration parameters, deployment settings, and dependencies." },
+  { name: "Database Schema Documentation",     file: "/templates/Database_Schema_Documentation_Template.pdf",     key: "database",      desc: "Describes database structure, tables, relationships, indexing, and constraints." },
+  { name: "Risk Management Report",            file: "/templates/Risk_Management_Report_Template.pdf",            key: "risk",          desc: "Identifies project risks, impact analysis, mitigation strategies, and monitoring plan." },
+  { name: "Deployment Guide",                  file: "/templates/Deployment_Guide_Template.pdf",                  key: "deploy",        desc: "Step-by-step deployment process including environment setup, CI/CD, and rollback procedures." },
 ];
 
 const cardTheme = {
@@ -32,28 +37,57 @@ export default function TemplatesPage() {
   const [selected, setSelected] = useState(null);
   const [hovered,  setHovered]  = useState(null);
 
-  const { boardId }      = useParams();
-  const [searchParams]   = useSearchParams();
-  const navigate         = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location       = useLocation();
+  const navigate       = useNavigate();
+  const params         = useParams();
 
+  // ── Detect source (trello / github / slack) ──
+  const source = location.state?.source || searchParams.get("source") || "trello";
+
+  // ── Support Trello boardId, GitHub repoId, Slack channelId ──
+  const boardId =
+    params.boardId ||
+    searchParams.get("boardId") ||
+    searchParams.get("repoId") ||
+    searchParams.get("channelId") ||
+    location.state?.boardId ||
+    location.state?.repoId ||
+    location.state?.channelId;
 
   const handleSelect = (t) => {
+    console.log("Selected source:", source);
+    console.log("Board/Repo/Channel ID:", boardId);
+
     setSelected(t.key);
+
+    // Build correct query param dynamically based on source
+    let idParam;
+    if (source === "github")     idParam = `repoId=${boardId}`;
+    else if (source === "slack") idParam = `channelId=${boardId}`;
+    else                         idParam = `boardId=${boardId}`;
+
     navigate(
-      `/headings?${boardId}&templateKey=${t.key}&templateName=${encodeURIComponent(t.name)}`
+      `/headings?${idParam}&templateKey=${t.key}&templateName=${encodeURIComponent(t.name)}`,
+      {
+        state: {
+          source,
+          boardId,
+          repoId:    location.state?.repoId,
+          channelId: location.state?.channelId,
+        },
+      }
     );
   };
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
-
       {/* Background glow */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_40%_at_50%_0%,rgba(99,102,241,0.06),transparent)]" />
       </div>
 
       <div className="max-w-5xl mx-auto px-6 pt-8 pb-16">
-
         {/* ── Header ── */}
         <div className="mb-10 flex items-center justify-between">
           <div>
@@ -69,6 +103,16 @@ export default function TemplatesPage() {
             <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 tracking-tight">
               Pick a Template
             </h1>
+
+            {boardId && (
+              <p className="mt-3 text-gray-500 text-lg">
+                <span className="capitalize font-semibold text-gray-700">{source}</span>
+                {" · "}
+                <span className="font-mono text-sm bg-gray-100 px-2 py-0.5 rounded">
+                  {boardId}
+                </span>
+              </p>
+            )}
           </div>
 
           <div className="hidden sm:flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">

@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   XCircle,
   ArrowRight,
+  Hash,
+  GitBranch,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -29,8 +31,8 @@ import NotificationBell from "../components/NotificationBell";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-// ── Integration config — add more tools here later ───────────────────────────
-const INTEGRATIONS = [
+// ── Integration config (all connected: false by default — derived dynamically) ─
+const INTEGRATIONS_BASE = [
   {
     key: "trello",
     name: "Trello",
@@ -41,25 +43,9 @@ const INTEGRATIONS = [
         <path d="M21 0H3C1.343 0 0 1.343 0 3v18c0 1.657 1.343 3 3 3h18c1.657 0 3-1.343 3-3V3c0-1.657-1.343-3-3-3zM10.44 18.18c0 .795-.645 1.44-1.44 1.44H4.56c-.795 0-1.44-.645-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44H9c.795 0 1.44.645 1.44 1.44v13.62zm10.44-6c0 .795-.645 1.44-1.44 1.44H15c-.795 0-1.44-.645-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44h4.44c.795 0 1.44.645 1.44 1.44v7.62z" />
       </svg>
     ),
-    connected: true,
     linkTo: "/boards",
     connectPath: "/integrations",
     description: "Boards & cards",
-  },
-  {
-    key: "jira",
-    name: "Jira",
-    color: "#2684FF",
-    lightBg: "#E6F0FF",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-        <path d="M11.975 0C5.36 0 0 5.36 0 11.975c0 6.614 5.36 11.974 11.975 11.974 6.614 0 11.974-5.36 11.974-11.974C23.95 5.36 18.589 0 11.975 0zm-.84 17.418l-4.577-4.577 1.413-1.413 3.164 3.164 6.32-6.32 1.413 1.413-7.733 7.733z" />
-      </svg>
-    ),
-    connected: false,
-    linkTo: "/integrations",
-    connectPath: "/integrations",
-    description: "Issues & sprints",
   },
   {
     key: "github",
@@ -67,8 +53,7 @@ const INTEGRATIONS = [
     color: "#24292E",
     lightBg: "#F0F0F0",
     icon: <Github size={18} />,
-    connected: false,
-    linkTo: "/integrations",
+    linkTo: "/github",
     connectPath: "/integrations",
     description: "PRs & repos",
   },
@@ -78,8 +63,7 @@ const INTEGRATIONS = [
     color: "#611F69",
     lightBg: "#F3EAF5",
     icon: <MessageSquare size={18} />,
-    connected: false,
-    linkTo: "/integrations",
+    linkTo: "/slack",
     connectPath: "/integrations",
     description: "Messages & threads",
   },
@@ -110,15 +94,45 @@ function NavLink({ to, icon, children, active }) {
   return (
     <Link
       to={to}
-      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-        active
-          ? "bg-indigo-50 text-indigo-700"
-          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-      }`}
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${active
+        ? "bg-indigo-50 text-indigo-700"
+        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+        }`}
     >
       <span className={active ? "text-indigo-600" : "text-gray-400"}>{icon}</span>
       {children}
     </Link>
+  );
+}
+
+// ── Section Header ────────────────────────────────────────────────────────────
+function SectionHeader({ title, linkTo, linkLabel = "View all" }) {
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+      <Link
+        to={linkTo}
+        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+      >
+        {linkLabel} <ArrowRight size={12} />
+      </Link>
+    </div>
+  );
+}
+
+// ── Empty State ───────────────────────────────────────────────────────────────
+function EmptyState({ icon: Icon, message, linkTo, linkLabel }) {
+  return (
+    <div className="bg-white border border-dashed border-gray-300 rounded-xl p-8 text-center">
+      <Icon className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+      <p className="text-sm text-gray-500 mb-3">{message}</p>
+      <Link
+        to={linkTo}
+        className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+      >
+        {linkLabel} <ArrowRight size={13} />
+      </Link>
+    </div>
   );
 }
 
@@ -131,15 +145,31 @@ export default function Dashboard() {
   const [openDropdown, setOpenDropdown] = useState(false);
   const [documents, setDocuments] = useState([]);
   const [boards, setBoards] = useState([]);
+  const [githubRepos, setGithubRepos] = useState([]);
+  const [slackChannels, setSlackChannels] = useState([]);
   const [activeFilter, setActiveFilter] = useState("all");
   const [stats, setStats] = useState({
     totalDocs: 0,
     activeProjects: 0,
     aiGenerated: 0,
-    trelloBoards: 0,
+    connectedTools: 0,
   });
   const navigate = useNavigate();
   const userId = getUserId();
+
+  // ── Derive integrations dynamically from fetched data ──────────────────────
+  // This ensures connected status is always per-user and per-account,
+  // never hardcoded. If boards fetched → Trello connected, etc.
+  const integrations = INTEGRATIONS_BASE.map((intg) => {
+    if (intg.key === "trello") return { ...intg, connected: boards.length > 0 };
+    if (intg.key === "github") return { ...intg, connected: githubRepos.length > 0 };
+    if (intg.key === "slack") return { ...intg, connected: slackChannels.length > 0 };
+    return { ...intg, connected: false }; // jira — extend when backend supports it
+  });
+
+  const githubIntg = integrations.find((i) => i.key === "github");
+  const slackIntg = integrations.find((i) => i.key === "slack");
+  const trelloIntg = integrations.find((i) => i.key === "trello");
 
   // ── Auth ───────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -173,7 +203,12 @@ export default function Dashboard() {
           setDocuments(res.data.documents);
           const totalDocs = res.data.documents.length;
           const uniqueProjects = new Set(res.data.documents.map((d) => d.project_id)).size;
-          setStats((prev) => ({ ...prev, totalDocs, activeProjects: uniqueProjects, aiGenerated: totalDocs }));
+          setStats((prev) => ({
+            ...prev,
+            totalDocs,
+            activeProjects: uniqueProjects,
+            aiGenerated: totalDocs,
+          }));
         }
       } catch {
         setDocuments([]);
@@ -192,9 +227,9 @@ export default function Dashboard() {
           params: { user_id: uid },
         });
         if (res.data.status === "success") {
-          const b = res.data.boards || [];
-          setBoards(b);
-          setStats((prev) => ({ ...prev, trelloBoards: b.length }));
+          setBoards(res.data.boards || []);
+        } else {
+          setBoards([]);
         }
       } catch {
         setBoards([]);
@@ -206,11 +241,45 @@ export default function Dashboard() {
     else setLoading(false);
   }, [user, userId]);
 
+  // ── GitHub Repos ───────────────────────────────────────────────────────────
+  // TODO: uncomment when /github/repos route is available on backend
+  // useEffect(() => {
+  //   const fetchRepos = async () => {
+  //     const uid = user?._id || userId;
+  //     if (!uid) return;
+  //     try {
+  //       const res = await axios.get(`${BACKEND_URL}/github/repos`, { params: { user_id: uid } });
+  //       setGithubRepos(res.data.repos || []);
+  //     } catch { setGithubRepos([]); }
+  //   };
+  //   if (user?._id || userId) fetchRepos();
+  // }, [user, userId]);
+
+  // ── Slack Channels ─────────────────────────────────────────────────────────
+  // TODO: uncomment when /slack/channels route is available on backend
+  // useEffect(() => {
+  //   const fetchChannels = async () => {
+  //     const uid = user?._id || userId;
+  //     if (!uid) return;
+  //     try {
+  //       const res = await axios.get(`${BACKEND_URL}/slack/channels`, { params: { user_id: uid } });
+  //       setSlackChannels(res.data.channels || []);
+  //     } catch { setSlackChannels([]); }
+  //   };
+  //   if (user?._id || userId) fetchChannels();
+  // }, [user, userId]);
+
+  // ── Update connectedTools count whenever integrations change ───────────────
+  useEffect(() => {
+    const count = integrations.filter((i) => i.connected).length;
+    setStats((prev) => ({ ...prev, connectedTools: count }));
+  }, [boards.length, githubRepos.length, slackChannels.length]);
+
   // ── Logout ─────────────────────────────────────────────────────────────────
   const handleLogout = async () => {
     try {
       await axios.post(`${BACKEND_URL}/auth/logout`, {}, { withCredentials: true });
-    } catch {}
+    } catch { }
     localStorage.removeItem("userId");
     localStorage.removeItem("token");
     sessionStorage.setItem("loggedOut", "true");
@@ -279,10 +348,10 @@ export default function Dashboard() {
       valColor: "text-emerald-700",
     },
     {
-      label: "Trello Boards",
-      value: stats.trelloBoards,
-      sub: stats.trelloBoards > 0 ? "Connected & synced" : "Not connected",
-      icon: <BarChart3 className="w-5 h-5" />,
+      label: "Connected Tools",
+      value: stats.connectedTools,
+      sub: stats.connectedTools > 0 ? "Integrations active" : "None connected",
+      icon: <LinkIcon className="w-5 h-5" />,
       bg: "bg-blue-50",
       iconColor: "text-blue-600",
       valColor: "text-blue-700",
@@ -318,6 +387,20 @@ export default function Dashboard() {
               />
             </div>
 
+            <div className="hidden md:flex items-center gap-6 ml-6">
+              <Link to="/workspace" className="text-gray-600 hover:text-indigo-600 font-medium">
+                Team Workspace
+              </Link>
+              <Link to="/pricing" className="text-gray-600 hover:text-indigo-600 font-medium">
+                Pricing
+              </Link>
+              <Link to="/subscription">
+                <button className="bg-black text-white px-4 py-2 rounded-full hover:opacity-80 transition">
+                  View Plan
+                </button>
+              </Link>
+            </div>
+
             <div className="flex items-center gap-3 shrink-0">
               {user?._id && <NotificationBell userId={user._id} />}
               <div className="relative">
@@ -337,15 +420,6 @@ export default function Dashboard() {
                     <div className="px-4 py-3 border-b border-gray-100">
                       <div className="text-sm font-semibold text-gray-800">{user?.name}</div>
                       <div className="text-xs text-gray-500 truncate">{user?.email}</div>
-                    </div>
-                    <div className="py-1.5">
-                      <Link
-                        to="/settings"
-                        onClick={() => setOpenDropdown(false)}
-                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <Settings className="w-4 h-4" /> Settings
-                      </Link>
                     </div>
                     <div className="border-t border-gray-100 py-1.5">
                       <button
@@ -375,42 +449,71 @@ export default function Dashboard() {
             <NavLink to="/analytics" icon={<BarChart3 size={16} />}>Analytics</NavLink>
           </nav>
 
-          {/* Trello boards quick list */}
-          {boards.length > 0 && (
-            <div className="px-3 mt-3 border-t border-gray-100 pt-4">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
-                Trello Boards
-              </p>
-              <div className="space-y-0.5">
-                {boards.slice(0, 4).map((board, i) => (
-                  <Link
-                    key={i}
-                    to={`/templates/${board.id}?boardName=${encodeURIComponent(board.name)}`}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
-                    <span className="truncate">{board.name}</span>
-                  </Link>
-                ))}
-                {boards.length > 4 && (
-                  <Link
-                    to="/boards"
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                  >
-                    +{boards.length - 4} more <ArrowRight size={11} />
-                  </Link>
-                )}
-              </div>
-            </div>
-          )}
+          {/* ── Workspaces quick list ─────────────────────────────────────── */}
+          <div className="px-3 mt-3 border-t border-gray-100 pt-4">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
+              Workspaces
+            </p>
+            <div className="space-y-0.5">
+              {/* Trello boards — only shown if connected */}
+              {trelloIntg?.connected && boards.slice(0, 3).map((board, i) => (
+                <Link
+                  key={`trello-${i}`}
+                  to={`/templates/${board.id}?boardName=${encodeURIComponent(board.name)}`}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                >
+                  <span className="w-4 h-4 shrink-0 flex items-center justify-center" style={{ color: "#0079BF" }}>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+                      <path d="M21 0H3C1.343 0 0 1.343 0 3v18c0 1.657 1.343 3 3 3h18c1.657 0 3-1.343 3-3V3c0-1.657-1.343-3-3-3zM10.44 18.18c0 .795-.645 1.44-1.44 1.44H4.56c-.795 0-1.44-.645-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44H9c.795 0 1.44.645 1.44 1.44v13.62zm10.44-6c0 .795-.645 1.44-1.44 1.44H15c-.795 0-1.44-.645-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44h4.44c.795 0 1.44.645 1.44 1.44v7.62z" />
+                    </svg>
+                  </span>
+                  <span className="truncate flex-1">{board.name}</span>
+                </Link>
+              ))}
 
-          {/* Integration status in sidebar */}
+              {/* GitHub repos — only shown if connected */}
+              {githubIntg?.connected && githubRepos.slice(0, 2).map((repo, i) => (
+                <Link
+                  key={`gh-${i}`}
+                  to={`/github/repos/${repo.id}`}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                >
+                  <Github size={12} className="text-gray-500 shrink-0" />
+                  <span className="truncate flex-1">{repo.name}</span>
+                </Link>
+              ))}
+
+              {/* Slack channels — only shown if connected */}
+              {slackIntg?.connected && slackChannels.slice(0, 2).map((ch, i) => (
+                <Link
+                  key={`slack-${i}`}
+                  to={`/slack/channels/${ch.id}`}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                >
+                  <Hash size={12} className="text-purple-400 shrink-0" />
+                  <span className="truncate flex-1">#{ch.name}</span>
+                </Link>
+              ))}
+
+              {/* Nothing connected at all */}
+              {!trelloIntg?.connected && !githubIntg?.connected && !slackIntg?.connected && (
+                <Link
+                  to="/integrations"
+                  className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-gray-400 hover:text-indigo-600 transition-colors"
+                >
+                  <Plus size={11} /> Connect a tool
+                </Link>
+              )}
+            </div>
+          </div>
+
+          {/* ── Integration status ────────────────────────────────────────── */}
           <div className="px-3 mt-3 border-t border-gray-100 pt-4 pb-4">
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
               Integrations
             </p>
             <div className="space-y-0.5">
-              {INTEGRATIONS.map((intg) => (
+              {integrations.map((intg) => (
                 <Link
                   key={intg.key}
                   to={intg.connected ? intg.linkTo : intg.connectPath}
@@ -434,7 +537,7 @@ export default function Dashboard() {
           {/* Welcome */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">
-              Welcome back, {user?.name?.split(" ")[0] || "there"} 👋
+              Welcome back, {user?.name?.split(" ")[0] || "there"}
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">Here's your documentation overview.</p>
           </div>
@@ -457,42 +560,32 @@ export default function Dashboard() {
           <div className="mb-7">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-semibold text-gray-900">Connected Tools</h2>
-              <Link
-                to="/integrations"
-                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
-              >
+              <Link to="/integrations" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
                 Manage <ArrowRight size={12} />
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {INTEGRATIONS.map((intg) => (
+              {integrations.map((intg) => (
                 <Link
                   key={intg.key}
                   to={intg.connected ? intg.linkTo : intg.connectPath}
                   className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md hover:border-gray-300 transition-all group"
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center"
-                      style={{ background: intg.lightBg, color: intg.color }}
-                    >
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: intg.lightBg, color: intg.color }}>
                       {intg.icon}
                     </div>
                     {intg.connected ? (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                        Live
-                      </span>
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Live</span>
                     ) : (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                        Connect
-                      </span>
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Connect</span>
                     )}
                   </div>
                   <div className="text-sm font-semibold text-gray-800">{intg.name}</div>
                   <div className="text-xs text-gray-400 mt-0.5">{intg.description}</div>
                   {intg.connected ? (
                     <div className="mt-2 text-xs text-indigo-600 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Open boards <ArrowRight size={10} />
+                      Open <ArrowRight size={10} />
                     </div>
                   ) : (
                     <div className="mt-2 text-xs text-gray-400 font-medium flex items-center gap-1">
@@ -506,7 +599,6 @@ export default function Dashboard() {
 
           {/* ── Documents ─────────────────────────────────────────────────────── */}
           <div className="bg-white rounded-xl border border-gray-200 mb-6">
-            {/* header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <h2 className="text-base font-semibold text-gray-900">Documents</h2>
               <div className="flex items-center gap-2">
@@ -525,33 +617,24 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* filter tabs */}
             <div className="flex items-center gap-1.5 px-5 py-2.5 border-b border-gray-100 overflow-x-auto">
-              {["all", ...INTEGRATIONS.map((i) => i.key)].map((tab) => {
-                const intg = INTEGRATIONS.find((i) => i.key === tab);
+              {["all", ...INTEGRATIONS_BASE.map((i) => i.key)].map((tab) => {
+                const intg = integrations.find((i) => i.key === tab);
                 const isActive = activeFilter === tab;
                 return (
                   <button
                     key={tab}
                     onClick={() => setActiveFilter(tab)}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                      isActive
-                        ? "bg-indigo-600 text-white"
-                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                    }`}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap ${isActive ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                      }`}
                   >
-                    {intg && (
-                      <span style={!isActive ? { color: intg.color } : {}}>
-                        {intg.icon}
-                      </span>
-                    )}
+                    {intg && <span style={!isActive ? { color: intg.color } : {}}>{intg.icon}</span>}
                     {tab === "all" ? "All" : intg?.name}
                   </button>
                 );
               })}
             </div>
 
-            {/* docs body */}
             <div className="p-5">
               {recentDocs.length === 0 ? (
                 <div className="text-center py-14">
@@ -560,34 +643,24 @@ export default function Dashboard() {
                     {searchQuery
                       ? `No documents match "${searchQuery}"`
                       : activeFilter !== "all"
-                      ? `No documents from ${activeFilter} yet`
-                      : "No documents yet"}
+                        ? `No documents from ${activeFilter} yet`
+                        : "No documents yet"}
                   </p>
                   {activeFilter === "all" && (
-                    <Link
-                      to="/boards"
-                      className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm hover:bg-indigo-700 transition-colors"
-                    >
+                    <Link to="/boards" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm hover:bg-indigo-700 transition-colors">
                       <Plus size={15} /> Generate your first doc
                     </Link>
                   )}
-                  {activeFilter !== "all" &&
-                    !INTEGRATIONS.find((i) => i.key === activeFilter)?.connected && (
-                      <Link
-                        to="/integrations"
-                        className="inline-flex items-center gap-2 border border-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm hover:bg-gray-50 transition-colors"
-                      >
-                        <LinkIcon size={15} /> Connect {activeFilter}
-                      </Link>
-                    )}
+                  {activeFilter !== "all" && !integrations.find((i) => i.key === activeFilter)?.connected && (
+                    <Link to="/integrations" className="inline-flex items-center gap-2 border border-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                      <LinkIcon size={15} /> Connect {activeFilter}
+                    </Link>
+                  )}
                 </div>
               ) : viewMode === "grid" ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {recentDocs.map((doc) => (
-                    <div
-                      key={doc.id || doc._id}
-                      className="border border-gray-200 rounded-xl p-4 hover:shadow-md hover:border-indigo-200 transition-all"
-                    >
+                    <div key={doc.id || doc._id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md hover:border-indigo-200 transition-all">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-7 h-7 bg-indigo-50 rounded-lg flex items-center justify-center">
                           <FileText size={14} className="text-indigo-600" />
@@ -598,13 +671,8 @@ export default function Dashboard() {
                         {doc.board_name || doc.project_name || doc.workspace_name || "Untitled Document"}
                       </h3>
                       <div className="flex items-center justify-between">
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${getStatusColor("completed")}`}>
-                          Generated
-                        </span>
-                        <Link
-                          to={`/documents/${doc.template_name}?projectId=${doc.project_id}`}
-                          className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                        >
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${getStatusColor("completed")}`}>Generated</span>
+                        <Link to={`/documents/${doc.template_name}?projectId=${doc.project_id}&boardName=${encodeURIComponent(doc.project_name)}`} className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium">
                           <Eye size={12} /> View
                         </Link>
                       </div>
@@ -614,10 +682,7 @@ export default function Dashboard() {
               ) : (
                 <div className="space-y-1.5">
                   {recentDocs.map((doc) => (
-                    <div
-                      key={doc.id || doc._id}
-                      className="flex items-center gap-3 px-3 py-2.5 border border-gray-100 rounded-lg hover:bg-gray-50 hover:border-indigo-200 transition-all"
-                    >
+                    <div key={doc.id || doc._id} className="flex items-center gap-3 px-3 py-2.5 border border-gray-100 rounded-lg hover:bg-gray-50 hover:border-indigo-200 transition-all">
                       <div className="w-7 h-7 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
                         <FileText size={13} className="text-indigo-600" />
                       </div>
@@ -630,10 +695,7 @@ export default function Dashboard() {
                           <span>Recently</span>
                         </div>
                       </div>
-                      <Link
-                        to={`/documents/${doc.template_name}?projectId=${doc.project_id}`}
-                        className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium shrink-0"
-                      >
+                      <Link to={`/documents/${doc.template_name}?projectId=${doc.project_id}`} className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium shrink-0">
                         <Eye size={13} /> View
                       </Link>
                     </div>
@@ -643,10 +705,7 @@ export default function Dashboard() {
 
               {documents.length > 6 && (
                 <div className="mt-5 text-center">
-                  <Link
-                    to="/documents"
-                    className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                  >
+                  <Link to="/documents" className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium">
                     View all {documents.length} documents <ArrowRight size={14} />
                   </Link>
                 </div>
@@ -654,50 +713,125 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* ── Trello Boards grid ────────────────────────────────────────────── */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-semibold text-gray-900">Trello Boards</h2>
-              <Link
-                to="/boards"
-                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
-              >
-                View all <ArrowRight size={12} />
-              </Link>
-            </div>
+          {/* ── Projects (all integrations combined) ─────────────────────── */}
+          <div className="mb-6">
+            <SectionHeader title="Projects & Workspaces" linkTo="/integrations" linkLabel="Manage" />
 
-            {boards.length === 0 ? (
-              <div className="bg-white border border-dashed border-gray-300 rounded-xl p-8 text-center">
-                <AlertCircle className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500 mb-3">No Trello boards connected</p>
-                <Link
-                  to="/integrations"
-                  className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                >
-                  Connect Trello <ArrowRight size={13} />
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {boards.slice(0, 6).map((board, i) => (
-                  <Link
-                    key={i}
-                    to={`/templates/${board.id}?boardName=${encodeURIComponent(board.name)}`}
-                    className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:shadow-md hover:border-blue-200 transition-all group"
-                  >
-                    <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                      <FolderOpen size={16} className="text-blue-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{board.name}</p>
-                      <p className="text-xs text-gray-400 truncate">
-                        {board.desc ? board.desc.slice(0, 35) + "…" : "No description"}
-                      </p>
-                    </div>
-                    <Play size={14} className="text-gray-300 group-hover:text-blue-500 transition-colors shrink-0" />
+            {/* Trello — only shown if connected */}
+            {trelloIntg?.connected && boards.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span style={{ color: "#0079BF" }}>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
+                      <path d="M21 0H3C1.343 0 0 1.343 0 3v18c0 1.657 1.343 3 3 3h18c1.657 0 3-1.343 3-3V3c0-1.657-1.343-3-3-3zM10.44 18.18c0 .795-.645 1.44-1.44 1.44H4.56c-.795 0-1.44-.645-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44H9c.795 0 1.44.645 1.44 1.44v13.62zm10.44-6c0 .795-.645 1.44-1.44 1.44H15c-.795 0-1.44-.645-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44h4.44c.795 0 1.44.645 1.44 1.44v7.62z" />
+                    </svg>
+                  </span>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Trello</span>
+                  <Link to="/boards" className="ml-auto text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-0.5">
+                    View all <ArrowRight size={10} />
                   </Link>
-                ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {boards.slice(0, 3).map((board, i) => (
+                    <Link
+                      key={i}
+                      to={`/templates/${board.id}?boardName=${encodeURIComponent(board.name)}`}
+                      className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:shadow-md hover:border-blue-200 transition-all group"
+                    >
+                      <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                        <FolderOpen size={16} className="text-blue-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{board.name}</p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {board.desc ? board.desc.slice(0, 35) + "…" : "Trello board"}
+                        </p>
+                      </div>
+                      <Play size={14} className="text-gray-300 group-hover:text-blue-500 transition-colors shrink-0" />
+                    </Link>
+                  ))}
+                </div>
               </div>
+            )}
+
+            {/* GitHub — only shown if connected */}
+            {githubIntg?.connected && githubRepos.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Github size={13} className="text-gray-700" />
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">GitHub</span>
+                  <Link to="/github" className="ml-auto text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-0.5">
+                    View all <ArrowRight size={10} />
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {githubRepos.slice(0, 3).map((repo, i) => (
+                    <Link
+                      key={i}
+                      to={`/github/repos/${repo.id}`}
+                      className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:shadow-md hover:border-gray-400 transition-all group"
+                    >
+                      <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
+                        <GitBranch size={16} className="text-gray-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{repo.name}</p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {repo.description ? repo.description.slice(0, 35) + "…" : repo.full_name || "Repository"}
+                        </p>
+                      </div>
+                      <ArrowRight size={14} className="text-gray-300 group-hover:text-gray-600 transition-colors shrink-0" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Slack — only shown if connected */}
+            {slackIntg?.connected && slackChannels.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare size={13} style={{ color: "#611F69" }} />
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Slack</span>
+                  <Link to="/slack" className="ml-auto text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-0.5">
+                    View all <ArrowRight size={10} />
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {slackChannels.slice(0, 3).map((ch, i) => (
+                    <Link
+                      key={i}
+                      to={`/slack/channels/${ch.id}`}
+                      className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:shadow-md hover:border-purple-200 transition-all group"
+                    >
+                      <div className="w-9 h-9 bg-purple-50 rounded-lg flex items-center justify-center shrink-0">
+                        <Hash size={16} className="text-purple-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">#{ch.name}</p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {ch.topic?.value
+                            ? ch.topic.value.slice(0, 35) + "…"
+                            : ch.purpose?.value
+                              ? ch.purpose.value.slice(0, 35) + "…"
+                              : "Slack channel"}
+                        </p>
+                      </div>
+                      <ArrowRight size={14} className="text-gray-300 group-hover:text-purple-500 transition-colors shrink-0" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Nothing connected */}
+            {!trelloIntg?.connected && !githubIntg?.connected && !slackIntg?.connected && (
+              <EmptyState
+                icon={AlertCircle}
+                message="No integrations connected yet"
+                linkTo="/integrations"
+                linkLabel="Connect a tool"
+              />
             )}
           </div>
 
