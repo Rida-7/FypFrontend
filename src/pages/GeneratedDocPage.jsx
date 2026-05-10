@@ -251,6 +251,7 @@ const loadScript = (src, globalCheck) =>
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function GeneratedDocPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
 
