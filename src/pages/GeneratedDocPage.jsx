@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useSearchParams, useLocation } from "react-router-dom";
+import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -584,8 +584,13 @@ export default function GeneratedDocPage() {
       });
 
       const doc = res.data?.data?.final_doc || "";
+      const docId = res.data?.data?.doc_id || res.data?.doc_id || null;
       if (doc) setMessages((prev) => [...prev, { role: "assistant", content: doc }]);
       setMessages((prev) => [...prev, { role: "system", content: "Document marked as FINAL" }]);
+      if (docId) setFinalDocId(docId);
+      setTimeout(() => {
+        navigate("/documents");
+      }, 1500);
     } catch (err) {
       console.error(err);
     } finally {
@@ -1132,6 +1137,12 @@ ${xmlParts.join("\n")}
                       <RefreshCw className="w-4 h-4 flex-shrink-0" />
                     )}
                     {msg.content}
+                    {/* ✅ Redirecting indicator */}
+                    {msg.content.includes("FINAL") && (
+                      <span className="ml-auto text-xs text-green-500 animate-pulse">
+                        Redirecting to document…
+                      </span>
+                    )}
                   </div>
                 );
 
