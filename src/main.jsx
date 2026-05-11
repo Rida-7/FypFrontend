@@ -21,6 +21,7 @@ import SubscriptionPage from "./pages/SubscriptionPage";
 import PaymentPage from "./pages/PaymentPage";
 // import PaymentSuccess from "./pages/PaymentSuccess";
 import TeamWorkspacePage from "./pages/TeamWorkspacePage";
+import AdminDashboard from "./pages/AdminDashboard";
 
 
 
@@ -57,6 +58,7 @@ createRoot(document.getElementById('root')).render(
 
         {/* After login or signup, navigate here */}
         <Route path='/landing' element={<LandingPage />} />
+        <Route path="/admin" element={<AdminDashboard />} />
 
         {/* Catch-all fallback */}
         <Route path='*' element={<Navigate to='/' replace />} />
