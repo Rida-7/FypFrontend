@@ -14,25 +14,30 @@ export default function SignIn() {
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setError(null);
+  e.preventDefault();
+  setError(null);
 
-    try {
-      const res = await signIn({ email, password });
-      const user = res.data.user;
+  try {
+    const res = await signIn({ email, password });
+    const user = res.data.user;
 
-      if (!user?._id) throw new Error("Invalid user data");
+    if (!user?._id) throw new Error("Invalid user data");
 
-      localStorage.setItem("userId", user._id);
-      console.log("userId stored:", user._id);
+    localStorage.setItem("userId", user._id);
 
-      navigate("/dashboard");
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.detail || err.message);
+    // ADMIN REDIRECT — just check the stored ID
+    if (user._id === "admin") {
+      navigate("/admin");
+      return;
     }
-  }
 
+    navigate("/landing");
+
+  } catch (err) {
+    console.error(err);
+    setError(err.response?.data?.detail || err.message);
+  }
+}
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-800 text-gray-100">
       <motion.div
