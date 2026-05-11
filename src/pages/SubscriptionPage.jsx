@@ -40,6 +40,12 @@ export default function SubscriptionPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-indigo-50 flex items-center justify-center p-6">
 
       <div className="w-full max-w-lg">
+        <button
+  onClick={() => navigate("/dashboard")}
+  className="inline-flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition"
+>
+  ← Back to Dashboard
+</button>
 
         {/* HEADER */}
         <div className="text-center mb-8">
