@@ -31,7 +31,7 @@ export default function SignIn() {
       return;
     }
 
-    navigate("/landing");
+    navigate("/dashboard");
 
   } catch (err) {
     console.error(err);
