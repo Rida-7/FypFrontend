@@ -720,8 +720,15 @@ export default function DocumentsPage() {
       <div className="max-w-5xl mx-auto px-6 pt-8 pb-20">
 
         {/* Page Header */}
-        <div className="mb-10 flex items-center justify-between">
+        <div className="mb-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
+            <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-2 px-4 py-2.5 mb-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </Link>
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-sm">
                 <FileText className="w-4 h-4 text-white" />
