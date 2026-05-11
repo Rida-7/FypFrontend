@@ -22,7 +22,7 @@ import {
 } from "recharts";
 
 const BACKEND_URL =
-  "https://autodocgen-production-f5de.up.railway.app";
+  import.meta.env.VITE_BACKEND_URL;
 
 // ======================================================
 // DARKER PREMIUM COLORS
