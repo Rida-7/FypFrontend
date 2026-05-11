@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate,Link  } from "react-router-dom";
 import useSubscription from "../hooks/useSubscription";
 import { Sparkles, TrendingUp, AlertTriangle, ArrowLeft } from "lucide-react";
 
