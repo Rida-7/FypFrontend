@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import useSubscription from "../hooks/useSubscription";
-import { Sparkles, TrendingUp, AlertTriangle } from "lucide-react";
+import { Sparkles, TrendingUp, AlertTriangle, ArrowLeft } from "lucide-react";
 
 export default function SubscriptionPage() {
   const navigate = useNavigate();
@@ -43,6 +43,14 @@ export default function SubscriptionPage() {
 
         {/* HEADER */}
         <div className="text-center mb-8">
+          <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-2 px-4 py-2.5 mb-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </Link>
+          
           <div className="inline-flex items-center gap-2 bg-white border shadow-sm px-4 py-2 rounded-full mb-4">
             <Sparkles size={16} className="text-indigo-600" />
             <span className="text-sm text-gray-600">
