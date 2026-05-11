@@ -18,27 +18,25 @@ export default function SignUp() {
   e.preventDefault();
   try {
     const res = await signUp({ email, password, name });
-
     const user = res.data.user;
-    if (!user || !user._id) {
-      throw new Error("Signup failed: invalid user data");
+
+    if (!user || !user._id) throw new Error("Signup failed: invalid user data");
+
+    localStorage.setItem("userId", user._id);
+
+    // ADMIN REDIRECT
+    if (user._id === "admin") {
+      navigate("/admin");
+      return;
     }
 
-    
-    localStorage.setItem("userId", user._id);
-    console.log(" userId stored:", user._id);
-
     navigate("/landing");
+
   } catch (err) {
-    console.error("Sign up failed:", err);
-    setError(
-      err.response?.data?.detail ||
-      err.message ||
-      "Sign up failed"
-    );
+    console.error(err);
+    setError(err.response?.data?.detail || err.message || "Sign up failed");
   }
 }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-800 text-gray-100">
       <motion.div
