@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowLeft, FileText, RefreshCw, Download, FileDown } from "lucide-react";
+import { ArrowLeft, FileText, RefreshCw, Download, FileDown,ArrowLeft, } from "lucide-react";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -815,6 +815,13 @@ ${xmlParts.join("\n")}
 
         <div className="mb-8">
           <div className="flex items-center justify-between gap-4 flex-wrap">
+             <Link
+      to="/dashboard"
+      className="inline-flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition"
+    >
+      <ArrowLeft className="w-4 h-4" />
+      Back to Dashboard
+    </Link>
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-sm">
                 <FileText className="w-4 h-4 text-white" />
