@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowLeft, FileText, RefreshCw, Download, FileDown,ArrowLeft, } from "lucide-react";
+import { ArrowLeft, FileText, RefreshCw, Download, FileDown, } from "lucide-react";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
